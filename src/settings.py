@@ -78,10 +78,6 @@ import dj_database_url
 
 if DEBUG:
     DATABASES = {
-        'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))
-    }
-else:
-    DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': os.getenv('DB_NAME'),
@@ -91,6 +87,11 @@ else:
             'PORT': os.getenv('PORT')
         }
     }
+else:
+    DATABASES = {
+        'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))
+    }
+
 
 AUTH_USER_MODEL = 'account.User'
 
