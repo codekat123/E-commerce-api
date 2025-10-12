@@ -1,5 +1,5 @@
-from django.urls import path
-from .views import SignUpAPIView , LogoutView
+from django.urls import path ,include
+from .views import *
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -14,4 +14,10 @@ urlpatterns = [
 
     path('sign-up/',SignUpAPIView.as_view(),name='sign-up'),
     path('logout/',LogoutView.as_view(),name='logout'),
+
+    path('activation/<uidb64>/<token>/', ActivationView.as_view(), name="verify_email"),
+    path('resetpassword/', ResetPasswordView.as_view(), name="password"),
+    path('comfirm/resetpassword/<uidb64>/<token>/', ConfirmResetPassword.as_view(), name="resetpassword"),
+
+
 ]

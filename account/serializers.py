@@ -20,3 +20,21 @@ class UserSerializer(serializers.ModelSerializer):
           validated_data.pop('password2',None)
           user = User.objects.create_user(password=password,**validated_data)
           return user
+
+class ResetPasswordSerializer(serializers.Serializer):
+    new_password = serializers.CharField(write_only=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError("Passwords do not match.")
+        return data
+
+    def save(self, user):
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
