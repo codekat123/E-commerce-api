@@ -23,7 +23,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['e-commerce-api-production-8abf.up.railway.app', '127.0.0.1', 'localhost']
 
 
 # Application definition
