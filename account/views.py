@@ -13,7 +13,7 @@ from django.utils.encoding import force_bytes
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.conf import settings
-
+from .task import send_activation_email , send_reset_password_email
 
 class SignUpAPIView(CreateAPIView):
     queryset = User.objects.all()
@@ -24,12 +24,14 @@ class SignUpAPIView(CreateAPIView):
 
     def perform_create(self, serializer):
         user = serializer.save(is_active=False)
-        
+
+        # auto-activate merchants
         if user.roles == "Merchant":
             user.is_active = True
             user.save()
             return user
 
+        
         protocol = "https" if self.request.is_secure() else "http"
         domain = self.request.get_host()
         uid = urlsafe_base64_encode(force_bytes(user.pk))
@@ -43,13 +45,10 @@ class SignUpAPIView(CreateAPIView):
             "If this email wasn’t intended for you, just ignore it."
         )
 
-        try:
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
-        except Exception as e:
-            print(f"Failed to send email: {e}")
+        
+        send_activation_email.delay(subject, message, user.email)
 
         return user
-
 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
@@ -108,7 +107,6 @@ class ActivationView(APIView):
 
 
 
-
 class ResetPasswordView(APIView):
     """
     Handles password reset requests.
@@ -143,13 +141,8 @@ class ResetPasswordView(APIView):
             "If you didn’t make this request, just ignore this email."
         )
 
-        try:
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
-        except Exception as e:
-            return Response(
-                {"success": False, "message": f"Failed to send email: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+       
+        send_reset_password_email.delay(subject, message, user.email)
 
         return Response(
             {"success": True, "message": "Password reset link sent successfully."},
