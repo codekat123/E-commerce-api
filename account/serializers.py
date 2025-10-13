@@ -7,13 +7,20 @@ class UserSerializer(serializers.ModelSerializer):
 
      class Meta:
           model = User
-          fields = ['id', 'email', 'password1', 'password2']
+          fields = ['id', 'email', 'password1', 'password2','roles']
 
 
-     def validate(self,data):
-          if data['password1'] != data['password2'] :
-               raise serializers.ValidationError('Passwords don\'t match!')
-          return data
+     def validate(self, data):
+         password1 = data.get('password1')
+         password2 = data.get('password2')
+     
+         if password1 != password2:
+             raise serializers.ValidationError("Passwords don't match!")
+     
+         if len(password1) < 8:
+             raise serializers.ValidationError("Password must be at least 8 characters long.")
+     
+         return data
      
      def create(self,validated_data):
           password = validated_data.pop('password1')
@@ -21,20 +28,3 @@ class UserSerializer(serializers.ModelSerializer):
           user = User.objects.create_user(password=password,**validated_data)
           return user
 
-class ResetPasswordSerializer(serializers.Serializer):
-    new_password = serializers.CharField(write_only=True, min_length=8)
-    confirm_password = serializers.CharField(write_only=True, min_length=8)
-
-    def validate(self, data):
-        if data['new_password'] != data['confirm_password']:
-            raise serializers.ValidationError("Passwords do not match.")
-        return data
-
-    def save(self, user):
-        user.set_password(self.validated_data['new_password'])
-        user.save()
-        return user
-
-
-class ResetPasswordSerializer(serializers.Serializer):
-    email = serializers.EmailField()
