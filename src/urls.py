@@ -21,7 +21,8 @@ schema_view = get_schema_view(
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('account/', include(('account.urls', 'account'), namespace='account')),
-    path('user_profile/', include(('user_profile.urls', 'user_profile'), namespace='user_profile')),
+    path('profile/', include(('user_profile.urls', 'user_profile'), namespace='user_profile')),
+    path('product/', include(('product.urls', 'product'), namespace='product')),
 
     # Swagger UI routes
     re_path(r'^swagger(?P<format>\.json|\.yaml)$', 
