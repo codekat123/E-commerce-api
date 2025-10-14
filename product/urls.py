@@ -4,6 +4,7 @@ from .views import (
     CategoryRetrieveUpdateDestroyAPIView,
     ProductListCreateAPIView,
     ProductRetrieveUpdateDestroyAPIView,
+    MerchantProductListAPIView,
 )
 
 app_name = 'product'
@@ -16,4 +17,7 @@ urlpatterns = [
     # ---- Product endpoints ----
     path('products/', ProductListCreateAPIView.as_view(), name='product-list-create'),
     path('products/<slug:slug>/', ProductRetrieveUpdateDestroyAPIView.as_view(), name='product-detail'),
+    # ----- merchant products endpoint ----
+
+    path('my-products/',MerchantProductListAPIView.as_view(),name='my-product')
 ]

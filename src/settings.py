@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'user_profile',
     'product',
     'account',
+    'cart',
     'drf_yasg',
 ]
 SITE_ID = 1
@@ -156,7 +157,9 @@ REST_FRAMEWORK = {
         'anon': '100/day',
         'user': '1000/day',
         'login':'5/minute',
-    }
+    },
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10, 
 }
 
 SIMPLE_JWT = {
@@ -166,6 +169,17 @@ SIMPLE_JWT = {
 }
 
 
+# settings.py
+
 
 
   
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": f"redis://{os.getenv('REDIS_HOST')}:{os.getenv('REDIS_PORT')}/{os.getenv('REDIS_DB')}",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+    }
+}
