@@ -1,0 +1,14 @@
+[build]
+packages = [
+  "python3",
+  "python3-pip",
+  "libpango-1.0-0",
+  "libgdk-pixbuf2.0-0",
+  "libcairo2",
+  "libglib2.0-0",
+  "libgobject-2.0-0",
+  "shared-mime-info"
+]
+
+[env]
+PYTHONUNBUFFERED = "1"
