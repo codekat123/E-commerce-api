@@ -1,15 +1,18 @@
 from django.core.cache import cache
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView , ListAPIView
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView , ListAPIView,RetrieveAPIView
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import Category, Product
 from .serializers import CategorySerializer, ProductSerializer
-from .permissions import IsAdminOrReadOnly, IsMerchantOrReadOnly
-
+from .permissions import IsAdminOrReadOnly, IsMerchant
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.throttling import UserRateThrottle
 
 # ---------- Category Views ----------
 class CategoryListCreateAPIView(ListCreateAPIView):
     serializer_class = CategorySerializer
     permission_classes = [IsAdminOrReadOnly]
+    throttle_classes = [UserRateThrottle]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         cache_key = 'categories_list'
@@ -25,6 +28,8 @@ class CategoryRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
     serializer_class = CategorySerializer
     lookup_field = 'slug'
     permission_classes = [IsAdminOrReadOnly]
+    throttle_classes = [UserRateThrottle]
+    permission_classes = [IsAuthenticated]
 
     def perform_update(self, serializer):
         response = super().perform_update(serializer)
@@ -38,12 +43,13 @@ class CategoryRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
 
 
 # ---------- Product Views ----------
-class ProductListCreateAPIView(ListCreateAPIView):
+class ProductListAPIView(ListAPIView):
     serializer_class = ProductSerializer
-    permission_classes = [IsMerchantOrReadOnly]
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ['name', 'description']
     ordering_fields = ['price', 'created_at']
+    throttle_classes = [UserRateThrottle]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         category_slug = self.request.query_params.get('category')
@@ -55,32 +61,17 @@ class ProductListCreateAPIView(ListCreateAPIView):
             if category_slug:
                 queryset = queryset.filter(category__slug=category_slug)
             products = list(queryset)
-            cache.set(cache_key, products, timeout=60 * 5)  # 5 mins
+            cache.set(cache_key, products, timeout=60 * 5)
         return products
 
-    def perform_create(self, serializer):
-        serializer.save(merchant=self.request.user.merchant_profile)
-        cache.clear()  # clear cache when new product is added
 
 
-class ProductRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
+class ProductRetrieveAPIView(RetrieveAPIView):
     queryset = Product.objects.select_related('category', 'merchant').all()
     serializer_class = ProductSerializer
     lookup_field = 'slug'
-    permission_classes = [IsMerchantOrReadOnly]
-
-    def perform_update(self, serializer):
-        serializer.save(merchant=self.request.user.merchant_profile)
-        cache.clear()  # invalidate cache on update
-
-    def perform_destroy(self, instance):
-        super().perform_destroy(instance)
-        cache.clear()
+    throttle_classes = [UserRateThrottle]
+    permission_classes = [IsAuthenticated]
 
 
-class MerchantProductListAPIView(ListAPIView):
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
 
-    def get_queryset(self):
-        return Product.objects.filter(merchant=self.request.user.merchant_profile)

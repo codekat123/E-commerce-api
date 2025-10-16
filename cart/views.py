@@ -1,13 +1,13 @@
 from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.serializers import Serializer, IntegerField
 from product.models import Product
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import UserRateThrottle
-from .serializers import CartItemSerializer 
+from .serializers import CartItemSerializer ,PaidOrderSerializer
 
 
 CACHE_TIMEOUT = 60 * 60 * 24 * 2  # 2 days
@@ -30,6 +30,11 @@ class CartService:
     def save_cart(user, cart):
         cache.set(CartService.get_key(user), cart, timeout=CACHE_TIMEOUT)
         return cart
+    
+    @staticmethod
+    def clear_cart(user):
+        key = CartService.get_key(user)
+        cache.delete(key)
 
 
 class CartViewSet(viewsets.ViewSet):
@@ -53,37 +58,58 @@ class CartViewSet(viewsets.ViewSet):
         serializer = CartItemSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         quantity = serializer.validated_data['quantity']
+        if product.amount < quantity:
+            return Response({'error':'the amount you want doesn\'t exist'},status=status.HTTP_404_NOT_FOUND)
+        
+        product.amount -= quantity
+        product.save()
 
         cart = CartService.get_cart(request.user)
         if product.id in cart:
             cart[product.id]['quantity'] += quantity
+            cart[product.id]['total_price'] = product.price * cart[product.id]['quantity']
         else:
             cart[product.id] = {
                 'name': product.name,
                 'quantity': quantity,
                 'total_price': product.price * quantity,
             }
-
         cart[product.id]['total_price'] = product.price * cart[product.id]['quantity']
         CartService.save_cart(request.user, cart)
         return Response({'message': 'Product added.', 'cart': cart}, status=status.HTTP_200_OK)
 
     def update(self, request, slug=None):
-        """Update product quantity."""
-        product = get_object_or_404(Product, slug=slug)
-        serializer = CartItemSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        quantity = serializer.validated_data['quantity']
+      """Update product quantity."""
+      product = get_object_or_404(Product, slug=slug)
+      serializer = CartItemSerializer(data=request.data)
+      serializer.is_valid(raise_exception=True)
+      quantity = serializer.validated_data['quantity']
 
-        cart = CartService.get_cart(request.user)
-        if product.id not in cart:
-            return Response({'error': 'Product not found in cart.'}, status=status.HTTP_404_NOT_FOUND)
+      cart = CartService.get_cart(request.user)
+      if product.id not in cart:
+          return Response({'error': 'Product not found in cart.'}, status=status.HTTP_404_NOT_FOUND)
 
-        cart[product.id]['quantity'] = quantity
-        cart[product.id]['total_price'] = product.price * quantity
-        CartService.save_cart(request.user, cart)
-        return Response({'message': 'Quantity updated.', 'cart': cart}, status=status.HTTP_200_OK)
+      previous_amount = cart[product.id]['quantity']
 
+      if quantity > previous_amount:
+          diff = quantity - previous_amount
+          if product.amount < diff:
+              return Response({'error': 'Not enough stock available.'}, status=status.HTTP_400_BAD_REQUEST)
+          product.amount -= diff
+      else:
+          diff = previous_amount - quantity
+          product.amount += diff
+
+      product.save()
+
+      
+      cart[product.id]['quantity'] = quantity
+      CartService.save_cart(request.user, cart)  
+
+      return Response({'message': 'Cart updated successfully.'})
+
+
+    
     def destroy(self, request, slug=None):
         """Remove a product from the cart."""
         product = get_object_or_404(Product, slug=slug)
@@ -96,7 +122,22 @@ class CartViewSet(viewsets.ViewSet):
         return Response({'message': 'Product removed.', 'cart': cart}, status=status.HTTP_200_OK)
     
     @action(detail=False, methods=['delete'])
-    def clear(self,request):
+    def clear(self, request):
         key = CartService.get_key(request.user)
+        cart = CartService.get_cart(request.user)
+        
+        serializer = PaidOrderSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        is_paid = serializer.validated_data['is_paid']
+    
+        if not is_paid and cart:
+            product_ids = cart.keys()
+            products = Product.objects.filter(id__in=product_ids)
+    
+            for product in products:
+                product.amount += cart[product.id]['quantity']
+            Product.objects.bulk_update(products, ['amount'])
+        
         cache.delete(key)
-        return Response({'message':'cart cleared successfully'})
+        return Response({'message': 'Cart cleared successfully.'})
+

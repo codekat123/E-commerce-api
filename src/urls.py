@@ -24,6 +24,8 @@ urlpatterns = [
     path('profile/', include(('user_profile.urls', 'user_profile'), namespace='user_profile')),
     path('product/', include(('product.urls', 'product'), namespace='product')),
     path('cart/', include(('cart.urls', 'cart'), namespace='cart')),
+    path('order/', include(('order.urls', 'order'), namespace='order')),
+    path('dashboard/', include(('dashboard.urls', 'dashboard'), namespace='dashboard')),
 
     # Swagger UI routes
     re_path(r'^swagger(?P<format>\.json|\.yaml)$', 
