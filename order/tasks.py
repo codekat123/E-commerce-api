@@ -4,8 +4,6 @@ from django.conf import settings
 from .models import Order
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
-import weasyprint
-from io import BytesIO
 
 @shared_task(bind=True,max_retries=3)
 def send_mails(self,order_id):
@@ -24,7 +22,7 @@ def send_mails(self,order_id):
                [order.user.email],
                False
           )
-          return f"email sent successfully to {order.user.profile.first_name}"
+          return f"email sent successfully to {order.user.email}"
      except Exception as e :
           self.retry(exc=e,countdown=10)
           return f"Email sending failed:{e}"
@@ -32,6 +30,8 @@ def send_mails(self,order_id):
 
 @shared_task
 def send_invoice(order_id):
+     import weasyprint
+     from io import BytesIO
      order = Order.objects.get(order_id=order_id)
      subject = f"your order is arrived - invoice - {order.order_id}"
      message = f"Hello {order.first_name} \n please find attached the invoice for your recent purchase"
