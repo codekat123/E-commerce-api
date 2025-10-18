@@ -12,5 +12,6 @@ urlpatterns = [
     # ---- Product endpoints ----
     path('products/', ProductListAPIView.as_view(), name='product-list-create'),
     path('products/<slug:slug>/', ProductRetrieveAPIView.as_view(), name='product-detail'),
+    path('products/rate/<slug:slug>/', ProductRatingListCreateAPIView.as_view(), name='product-rate'),
 
 ]

@@ -1,11 +1,13 @@
 from django.core.cache import cache
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView , ListAPIView,RetrieveAPIView
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView , ListAPIView,RetrieveAPIView,CreateAPIView
 from rest_framework.filters import SearchFilter, OrderingFilter
-from .models import Category, Product
-from .serializers import CategorySerializer, ProductSerializer
+from .models import Category, Product , ProductRating
+from .serializers import CategorySerializer, ProductSerializer,ProductRatingSerializer
 from .permissions import IsAdminOrReadOnly, IsMerchant
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.throttling import UserRateThrottle
+from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import ValidationError
 
 # ---------- Category Views ----------
 class CategoryListCreateAPIView(ListCreateAPIView):
@@ -73,5 +75,26 @@ class ProductRetrieveAPIView(RetrieveAPIView):
     throttle_classes = [UserRateThrottle]
     permission_classes = [IsAuthenticated]
 
+
+
+class ProductRatingListCreateAPIView(ListCreateAPIView):
+    serializer_class = ProductRatingSerializer
+
+    def get_queryset(self):
+        slug = self.kwargs['slug']
+        product = get_object_or_404(Product, slug=slug)
+        return ProductRating.objects.filter(product=product)
+
+    def perform_create(self, serializer):
+        slug = self.kwargs['slug']
+        product = get_object_or_404(Product, slug=slug)
+        user = self.request.user
+
+        if hasattr(user, 'profile'):
+            serializer.save(user=user.profile, product=product)
+        else:
+            raise ValidationError({"detail": "User profile not found."})
+
+        
 
 

@@ -1,7 +1,6 @@
 from django.db import models
-from user_profile.models import MerchantProfile
+from user_profile.models import MerchantProfile,CustomerProfile
 from django.utils.text import slugify
-
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
     slug = models.SlugField(unique=True, blank=True)
@@ -42,3 +41,17 @@ class Product(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.category})"
+
+
+class ProductRating(models.Model):
+    product = models.ForeignKey(Product,on_delete=models.CASCADE,related_name='rating')
+    user = models.ForeignKey(CustomerProfile,on_delete=models.CASCADE,related_name='rate')
+    rating = models.PositiveSmallIntegerField(choices=[(i, i) for i in range(1, 6)])  
+    comment = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "product") 
+
+    def __str__(self):
+        return f"{self.user.first_name} - {self.rating}⭐"

@@ -21,7 +21,7 @@ from django.utils import timezone
 
 
 class BaseMerchantProductsView(ListAPIView):
-    serializer_class = ProductSerializer
+    serializer_class = ProductSeriproductalizer
     permission_classes = [IsAuthenticated, IsMerchant]
     throttle_classes = [UserRateThrottle]
     filter_backends = [SearchFilter, OrderingFilter]
@@ -52,7 +52,6 @@ class MerchantCreateProductsView(CreateAPIView):
     serializer_class = ProductSerializer
     permission_classes = [IsAuthenticated, IsMerchant]
     throttle_classes = [UserRateThrottle]
-
 
 
 class MerchantUpdateProductsView(UpdateAPIView):
@@ -91,8 +90,7 @@ class GenerateReport(APIView):
     permission_classes = [IsAuthenticated, IsMerchant]
 
     def post(self, request, format=None, *args, **kwargs):
-        report_type = kwargs.get("report_type", "csv")  # "csv" or "pdf"
-
+        report_type = kwargs.get("report_type", "csv")  
         # Validate input dates
         serializer = DateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

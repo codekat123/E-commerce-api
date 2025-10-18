@@ -8,9 +8,7 @@ from .serializers import CustomerProfileSerializer, MerchantProfileSerializer
 
 
 class CustomerProfileUpdateAPIView(UpdateAPIView):
-    """
-    Allows an authenticated user to update their profile.
-    """
+
     permission_classes = [IsAuthenticated]
     serializer_class = CustomerProfileSerializer
 

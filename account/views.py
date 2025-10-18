@@ -24,7 +24,7 @@ class SignUpAPIView(CreateAPIView):
     permission_classes = [AllowAny]
 
     def perform_create(self, serializer):
-        user = serializer.save(is_active=False)
+        user = serializer.save(is_active=True)
 
         if user.roles == "Merchant":
             user.is_active = True
