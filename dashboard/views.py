@@ -21,7 +21,7 @@ from django.utils import timezone
 
 
 class BaseMerchantProductsView(ListAPIView):
-    serializer_class = ProductSeriproductalizer
+    serializer_class = ProductSerializer
     permission_classes = [IsAuthenticated, IsMerchant]
     throttle_classes = [UserRateThrottle]
     filter_backends = [SearchFilter, OrderingFilter]
