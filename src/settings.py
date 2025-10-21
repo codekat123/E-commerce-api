@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'drf_spectacular_sidecar',
     'recommendations',
+    # 'ai',
 ]
 
 SITE_ID = 1
