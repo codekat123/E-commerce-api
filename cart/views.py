@@ -8,7 +8,7 @@ from product.models import Product
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import UserRateThrottle
 from .serializers import CartItemSerializer ,PaidOrderSerializer
-
+from recommendations.task import log_user_action
 
 CACHE_TIMEOUT = 60 * 60 * 24 * 2  # 2 days
 
@@ -76,6 +76,22 @@ class CartViewSet(viewsets.ViewSet):
             }
         cart[product.id]['total_price'] = product.price * cart[product.id]['quantity']
         CartService.save_cart(request.user, cart)
+        
+        
+        try:
+            session_id = getattr(request.session, 'session_key', None)
+            user_id = request.user.id if request.user and request.user.is_authenticated else None
+            log_user_action.delay(
+                user_id=user_id,
+                product_id=product.id,
+                action='add_to_cart',
+                session_id=session_id,
+                metadata={'quantity': quantity, 'source': 'cart_add'}
+            )
+        except Exception:
+            pass
+
+
         return Response({'message': 'Product added.', 'cart': cart}, status=status.HTTP_200_OK)
 
     def update(self, request, slug=None):

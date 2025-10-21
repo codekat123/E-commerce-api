@@ -43,6 +43,15 @@ class Order(models.Model):
                self.order_id = unique_id
           super().save(*args,**kwargs)
 
+     def get_products(self):
+         return [item.product for item in self.order_item.all()]
+     
+     def get_status(self):
+         latest_status = self.order_status.order_by('-timestamp').first()
+         return latest_status.status if latest_status else None
+
+
+
 
 
 class OrderItem(models.Model):

@@ -26,5 +26,5 @@ urlpatterns = [
     # Get chart
     path('chart/',MerchantChartDataView.as_view(),name='chart'),
 
-        path("report/<str:report_type>/", GenerateReport.as_view(), name="generate-report"),
+    path("report/<str:report_type>/", GenerateReport.as_view(), name="generate-report"),
 ]

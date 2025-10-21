@@ -4,7 +4,7 @@ from .models import Order , OrderItem , OrderStatus , OrderPayment
 from .serializers import OrderSerializer , OrderStatusSerializer,OrderPaymentSerializer
 from cart.views import CartService
 from product.models import Product
-from rest_framework.generics import CreateAPIView , UpdateAPIView
+from rest_framework.generics import CreateAPIView , UpdateAPIView , ListAPIView,RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework.response import Response
@@ -14,6 +14,12 @@ from .serializers import OrderSerializer
 from cart.views import CartService  
 from .tasks import send_mails
 from rest_framework.exceptions import NotFound,  ValidationError
+from recommendations.task import log_user_action
+from django.db import transaction
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class ConfirmOrder(CreateAPIView):
     queryset = Order.objects.all()
@@ -45,16 +51,25 @@ class ConfirmOrder(CreateAPIView):
 
 
 
-class TrackOrder(UpdateAPIView):
+class OrderUpdateAPIView(UpdateAPIView):
     queryset = OrderStatus.objects.all()
     serializer_class = OrderStatusSerializer
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        try:
-            return OrderStatus.objects.filter(order__user=self.kwargs['order_id'])
-        except Order.DoesNotExist:
-            raise NotFound("Order not found.")
+    def get_object(self):
+        order_id = self.kwargs.get('order_id')
+        user = self.request.user
+
+        if order_id:
+            return get_object_or_404(Order, order_id=order_id, user=user)
+        
+        order = Order.objects.filter(user=user).order_by('-created_at').first()
+        if not order:
+            raise NotFound("No orders found for this user.")
+        return order
+
+
+
 
 
 
@@ -67,12 +82,45 @@ class OrderPaymentView(CreateAPIView):
     def perform_create(self, serializer):
         order_id = self.kwargs.get('order_id')
         order = get_object_or_404(Order, order_id=order_id)
-        order.paid = True
-        order.save()
-        
-        # You could validate that the order isn’t already paid
-        if hasattr(order, 'order_payment'):
+
+        if OrderPayment.objects.filter(order=order).exists():
             raise ValidationError("Order already paid.")
 
-        serializer.save(order=order)
+        with transaction.atomic():
+            order.paid = True
+            order.save()
+            order_payment = serializer.save(order=order)
 
+            try:
+                session_key = getattr(self.request.session, 'session_key', None)
+                log_user_action(
+                    user_id=order.user.id,
+                    order_item=order.order_item.id,
+                    action='purchase',
+                    metadata={
+                        'source': 'order_payment',
+                        'order_payment_id': order_payment.id,
+                    },
+                )
+            except Exception as e:
+                logger.warning(f"Log user action failed: {e}")
+
+
+
+
+class OrderDetailAPIView(RetrieveAPIView):
+    serializer_class = OrderSerializer
+    lookup_field = 'order_id'
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        order_id = self.kwargs.get('order_id')
+        user = self.request.user
+
+        if order_id:
+            return get_object_or_404(Order, order_id=order_id, user=user)
+        
+        order = Order.objects.filter(user=user).order_by('-created_at').first()
+        if not order:
+            raise NotFound("No orders found for this user.")
+        return order

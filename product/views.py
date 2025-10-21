@@ -8,13 +8,16 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.throttling import UserRateThrottle
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
+from recommendations.task import log_user_action
+
+
 
 # ---------- Category Views ----------
 class CategoryListCreateAPIView(ListCreateAPIView):
     serializer_class = CategorySerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
     throttle_classes = [UserRateThrottle]
-    permission_classes = [IsAuthenticated]
+
 
     def get_queryset(self):
         cache_key = 'categories_list'
@@ -29,9 +32,9 @@ class CategoryRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     lookup_field = 'slug'
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
     throttle_classes = [UserRateThrottle]
-    permission_classes = [IsAuthenticated]
+
 
     def perform_update(self, serializer):
         response = super().perform_update(serializer)
@@ -75,10 +78,31 @@ class ProductRetrieveAPIView(RetrieveAPIView):
     throttle_classes = [UserRateThrottle]
     permission_classes = [IsAuthenticated]
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        response = super().retrieve(request, *args, **kwargs)
+
+        try:
+            session_id = getattr(request.session, 'session_key', None)
+            user_id = request.user.id if request.user and request.user.is_authenticated else None
+            log_user_action.delay(
+                user_id=user_id,
+                product_id=instance.id,
+                action='view',
+                session_id=session_id,
+                metadata={'source': 'product_detail', 'slug': instance.slug}
+            )
+        except Exception:
+            pass
+
+        return response
+
 
 
 class ProductRatingListCreateAPIView(ListCreateAPIView):
     serializer_class = ProductRatingSerializer
+    permission_classes = [IsAuthenticated]
+
 
     def get_queryset(self):
         slug = self.kwargs['slug']

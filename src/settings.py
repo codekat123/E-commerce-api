@@ -46,8 +46,13 @@ INSTALLED_APPS = [
     'order',
     'drf_yasg',
     'dashboard',
+    'drf_spectacular',
+    'drf_spectacular_sidecar',
+    'recommendations',
 ]
+
 SITE_ID = 1
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -136,7 +141,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "static"
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / "static/media"
@@ -154,6 +159,7 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -204,3 +210,9 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Africa/Cairo'
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'E-commerce API',
+    'DESCRIPTION': 'API documentation for my E-commerce backend',
+    'VERSION': '1.0.0',
+}
