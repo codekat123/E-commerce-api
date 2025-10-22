@@ -21,7 +21,7 @@ urlpatterns = [
     path('order/', include(('order.urls', 'order'), namespace='order')),
     path('dashboard/', include(('dashboard.urls', 'dashboard'), namespace='dashboard')),
     path('recommendations/', include(('recommendations.urls', 'recommendations'), namespace='recommendations')),
-    # path('ai/', include(('ai.urls', 'ai'), namespace='ai')),
+    path('ai/', include(('ai.urls', 'ai'), namespace='ai')),
     
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),

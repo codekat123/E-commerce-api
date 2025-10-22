@@ -49,7 +49,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'drf_spectacular_sidecar',
     'recommendations',
-    # 'ai',
+    'ai',
 ]
 
 SITE_ID = 1
@@ -124,6 +124,8 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+OPENAI_API_KEY= os.getenv("OPENAI_API_KEY")
 
 
 # Internationalization
