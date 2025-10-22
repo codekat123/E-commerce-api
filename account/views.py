@@ -25,7 +25,7 @@ class SignUpAPIView(CreateAPIView):
     def perform_create(self, serializer):
         user = serializer.save(is_active=False)
 
-        if user.roles == "Merchant":
+        if user.roles == "merchant":
             user.is_active = True
             user.save()
             return user

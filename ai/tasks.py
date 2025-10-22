@@ -2,7 +2,7 @@ from celery import shared_task
 from django.conf import settings
 from product.models import Product
 from product.serializers import ProductSerializer
-import openai
+import google.generativeai as genai
 import json
 import re
 
@@ -25,23 +25,26 @@ The text before the JSON should be your human-readable message.
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
 def analyze_product_query_task(self, user_message, conversation_history=None):
     try:
-        client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        client = genai.GenerativeModel('gemini-2.5-flash')
+        messages = [{"role": "user", "parts": [{"text": SYSTEM_PROMPT}]}]
+        
         if conversation_history:
             for msg in conversation_history:
-                role = "user" if msg["message_type"] == "user" else "assistant"
-                messages.append({"role": role, "content": msg["content"]})
+                role = "user" if msg["message_type"] == "user" else "model"
+                messages.append({"role": role, "parts": [{"text": msg["content"]}]})
+        
+        messages.append({"role": "user", "parts": [{"text": user_message}]})
+        
+        completion = client.generate_content(messages)
+        
 
-        messages.append({"role": "user", "content": user_message})
+        content = ""
+        if completion.candidates:
+            parts = completion.candidates[0].content.parts
+            if parts:
+                content = parts[0].text
 
-
-        completion = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages
-        )
-
-        content = completion.choices[0].message.content
 
 
         match = re.search(r'(\{.*\})', content, re.DOTALL)
