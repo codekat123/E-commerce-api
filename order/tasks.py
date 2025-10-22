@@ -4,7 +4,8 @@ from django.template.loader import render_to_string
 from django.shortcuts import get_object_or_404
 from .models import Order
 import requests
-import weasyprint
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 from io import BytesIO
 
 BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
@@ -54,14 +55,24 @@ def send_order_confirmation(self, order_id):
 
 @shared_task(bind=True, max_retries=3)
 def send_invoice_email(self, order_id):
-    """Send a PDF invoice as an attachment via Brevo."""
     try:
         order = get_object_or_404(Order, order_id=order_id)
 
-        # Render invoice HTML → PDF
-        html = render_to_string("order/pdf.html", {"order": order})
-        pdf_file = BytesIO()
-        weasyprint.HTML(string=html).write_pdf(pdf_file)
+        # Create a PDF using ReportLab
+        pdf_buffer = BytesIO()
+        p = canvas.Canvas(pdf_buffer, pagesize=A4)
+        p.setFont("Helvetica", 12)
+
+        p.drawString(100, 800, f"Invoice for Order #{order.order_id}")
+        p.drawString(100, 780, f"Customer: {order.first_name} {order.last_name}")
+        p.drawString(100, 760, f"Email: {order.user.email}")
+
+        p.drawString(100, 700, "Thank you for shopping with us!")
+        p.showPage()
+        p.save()
+
+        pdf_buffer.seek(0)
+        pdf_bytes = pdf_buffer.getvalue()
 
         subject = f"📦 Your Order Invoice — {order.order_id}"
         html_content = render_to_string("emails/invoice_email.html", {"order": order})
@@ -69,7 +80,7 @@ def send_invoice_email(self, order_id):
         attachments = [
             {
                 "name": f"invoice_{order.order_id}.pdf",
-                "content": pdf_file.getvalue().decode("latin1"),
+                "content": pdf_bytes.decode("latin1"),
                 "type": "application/pdf",
             }
         ]

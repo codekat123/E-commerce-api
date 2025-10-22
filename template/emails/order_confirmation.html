@@ -1,0 +1,84 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Order Confirmed</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f6f6f6;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      background-color: #ffffff;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    .header {
+      text-align: center;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 10px;
+      margin-bottom: 25px;
+    }
+    .header h1 {
+      color: #2e7d32;
+      font-size: 22px;
+      margin: 0;
+    }
+    .order-details {
+      margin: 20px 0;
+    }
+    .order-details p {
+      margin: 8px 0;
+      color: #333;
+      font-size: 15px;
+    }
+    .btn {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 25px;
+      background-color: #2e7d32;
+      color: #ffffff;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+    .footer {
+      text-align: center;
+      font-size: 13px;
+      color: #888;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🛒 Your Order Has Been Confirmed!</h1>
+    </div>
+
+    <p>Hi {{ order.first_name }},</p>
+
+    <p>Thanks for shopping with <strong>ShopAI</strong>! We’re excited to let you know that your order has been confirmed successfully.</p>
+
+    <div class="order-details">
+      <p><strong>Order ID:</strong> {{ order.order_id }}</p>
+      <p><strong>Status:</strong> Confirmed</p>
+    </div>
+
+    <p>You can check your order details anytime from your account.</p>
+
+    <a href="https://shopai.example.com/orders/{{ order.order_id }}" class="btn">View My Order</a>
+
+    <div class="footer">
+      <p>Need help? Contact us at <a href="mailto:support@shopai.com">support@shopai.com</a></p>
+      <p>© 2025 ShopAI. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>
