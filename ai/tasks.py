@@ -4,16 +4,22 @@ from product.models import Product
 from product.serializers import ProductSerializer
 import openai
 import json
+import re
 
 SYSTEM_PROMPT = """
-You are an AI assistant for an e-commerce platform.
-Analyze the user's query and return structured JSON like:
+You are a helpful and friendly AI shopping assistant.
+You help users find the right products by chatting with them.
+When you reply, be conversational and helpful.
+At the end of your reply, also include a JSON block with your analysis like this:
+
 {
   "category": "",
   "keywords": [],
   "max_price": null,
-  "min_price": null,
+  "min_price": null
 }
+
+The text before the JSON should be your human-readable message.
 """
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
@@ -29,16 +35,25 @@ def analyze_product_query_task(self, user_message, conversation_history=None):
 
         messages.append({"role": "user", "content": user_message})
 
-        # Run model
+
         completion = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages
         )
 
         content = completion.choices[0].message.content
-        parsed = json.loads(content)
 
-        # Query database dynamically
+
+        match = re.search(r'(\{.*\})', content, re.DOTALL)
+        if match:
+            json_part = match.group(1)
+            human_reply = content.replace(json_part, "").strip()
+            parsed = json.loads(json_part)
+        else:
+            human_reply = content.strip()
+            parsed = {}.message.content
+            parsed = json.loads(content)
+
         products = Product.objects.all()
 
         if parsed.get("category"):
@@ -60,6 +75,7 @@ def analyze_product_query_task(self, user_message, conversation_history=None):
         return {
             "query_analysis": parsed,
             "results": serialized,
+            "human_reply":human_reply,
         }
 
     except Exception as exc:

@@ -38,7 +38,7 @@ class CategoryRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
 
     def perform_update(self, serializer):
         response = super().perform_update(serializer)
-        cache.delete('categories_list')  # invalidate cache
+        cache.delete('categories_list') 
         return response
 
     def perform_destroy(self, instance):
@@ -78,6 +78,20 @@ class ProductRetrieveAPIView(RetrieveAPIView):
     throttle_classes = [UserRateThrottle]
     permission_classes = [IsAuthenticated]
 
+
+    def get_object(self):
+        slug = self.kwargs['slug']
+        key_cache = f"product_{slug}"
+
+        product = cache.get(key_cache)
+
+        if not product:
+            product = get_object_or_404(Product, slug=slug)
+            cache.set(key_cache, ProductSerializer(product).data, timeout=3600)
+
+        
+        return product 
+
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         response = super().retrieve(request, *args, **kwargs)
@@ -103,11 +117,16 @@ class ProductRatingListCreateAPIView(ListCreateAPIView):
     serializer_class = ProductRatingSerializer
     permission_classes = [IsAuthenticated]
 
-
     def get_queryset(self):
         slug = self.kwargs['slug']
         product = get_object_or_404(Product, slug=slug)
-        return ProductRating.objects.filter(product=product)
+        cache_key = f"ratings_{slug}"
+
+        ratings = cache.get(cache_key)
+        if not ratings:
+            ratings = list(ProductRating.objects.filter(product=product))
+            cache.set(cache_key, ratings, timeout=60 * 10)  
+        return ratings
 
     def perform_create(self, serializer):
         slug = self.kwargs['slug']
@@ -116,6 +135,8 @@ class ProductRatingListCreateAPIView(ListCreateAPIView):
 
         if hasattr(user, 'profile'):
             serializer.save(user=user.profile, product=product)
+            # invalidate cache when new rating added
+            cache.delete(f"ratings_{slug}")
         else:
             raise ValidationError({"detail": "User profile not found."})
 

@@ -5,14 +5,6 @@ from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 urlpatterns = [
-    # your other urls...
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
-]
-
-
-urlpatterns = [
     path('admin/', admin.site.urls),
     path('account/', include(('account.urls', 'account'), namespace='account')),
     path('profile/', include(('user_profile.urls', 'user_profile'), namespace='user_profile')),

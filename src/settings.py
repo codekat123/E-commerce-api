@@ -22,7 +22,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-
+BREVO_API_KEY = os.getenv('BREVO_API_KEY')
 ALLOWED_HOSTS = ['e-commerce-api-production-8abf.up.railway.app', '127.0.0.1', 'localhost']
 
 

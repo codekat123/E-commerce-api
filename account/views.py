@@ -10,7 +10,6 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
 from django.urls import reverse
 from django.conf import settings
-
 from .serializers import *
 from .models import User
 from .tasks import send_email_task   
@@ -24,7 +23,7 @@ class SignUpAPIView(CreateAPIView):
     permission_classes = [AllowAny]
 
     def perform_create(self, serializer):
-        user = serializer.save(is_active=True)
+        user = serializer.save(is_active=False)
 
         if user.roles == "Merchant":
             user.is_active = True
@@ -35,20 +34,25 @@ class SignUpAPIView(CreateAPIView):
         domain = self.request.get_host()
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
-
         activation_link = f"{protocol}://{domain}{reverse('account:verify_email', kwargs={'uidb64': uid, 'token': token})}"
-        subject = "Please activate your email"
-        message = (
-            f"Please click the link below to activate your account:\n\n"
-            f"{activation_link}\n\n"
-            "If this email wasn’t intended for you, just ignore it."
-        )
 
-       
-        send_email_task.delay(subject, message, [user.email])
+        subject = "Activate Your ShopAI Account"
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333;">
+                <h2>Welcome to <strong>ShopAI</strong> 👋</h2>
+                <p>Click the button below to verify your email and activate your account:</p>
+                <a href="{activation_link}" 
+                   style="display:inline-block; padding:10px 20px; background:#007BFF; color:white; border-radius:6px; text-decoration:none;">
+                   Activate Account
+                </a>
+                <p style="margin-top:20px;">If this wasn’t you, please ignore this email.</p>
+            </body>
+        </html>
+        """
 
+        send_email_task.delay(subject, html_content, [user.email])
         return user
-
 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
@@ -95,7 +99,6 @@ class ResetPasswordView(APIView):
     """
     Handles password reset requests asynchronously via Celery.
     """
-
     def post(self, request):
         serializer = EmailSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -117,15 +120,22 @@ class ResetPasswordView(APIView):
         reset_link = f"{protocol}://{domain}{reverse('account:resetpassword', kwargs={'uidb64': uid, 'token': token})}"
 
         subject = "Reset Your Password"
-        message = (
-            f"Hi {user.first_name or 'there'},\n\n"
-            f"You requested to reset your password. Click the link below:\n"
-            f"{reset_link}\n\n"
-            "If you didn’t make this request, just ignore this email."
-        )
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333;">
+                <h2>Password Reset Request 🔒</h2>
+                <p>Hi {user.first_name or 'there'},</p>
+                <p>We received a request to reset your password. Click below to continue:</p>
+                <a href="{reset_link}" 
+                   style="display:inline-block; padding:10px 20px; background:#28a745; color:white; border-radius:6px; text-decoration:none;">
+                   Reset Password
+                </a>
+                <p style="margin-top:20px;">If you didn’t request this, you can safely ignore it.</p>
+            </body>
+        </html>
+        """
 
-        
-        send_email_task.delay(subject, message, [user.email])
+        send_email_task.delay(subject, html_content, [user.email])
 
         return Response(
             {"success": True, "message": "Password reset link sent successfully."},

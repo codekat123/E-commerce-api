@@ -12,7 +12,7 @@ from product.models import Product
 from order.models import Order, OrderItem
 from .serializers import OrderSerializer
 from cart.views import CartService  
-from .tasks import send_mails
+from .tasks import send_order_confirmation , send_invoice_email
 from rest_framework.exceptions import NotFound,  ValidationError
 from recommendations.task import log_user_action
 from django.db import transaction
@@ -44,7 +44,7 @@ class ConfirmOrder(CreateAPIView):
                 price=item_data['total_price'],
             )
 
-        send_mails.delay(order.order_id)
+        send_order_confirmation.delay(order.order_id)
         CartService.clear_cart(self.request.user)
 
         return order
@@ -83,6 +83,7 @@ class OrderPaymentView(CreateAPIView):
         order_id = self.kwargs.get('order_id')
         order = get_object_or_404(Order, order_id=order_id)
 
+
         if OrderPayment.objects.filter(order=order).exists():
             raise ValidationError("Order already paid.")
 
@@ -102,6 +103,7 @@ class OrderPaymentView(CreateAPIView):
                         'order_payment_id': order_payment.id,
                     },
                 )
+                send_invoice_email.delay(order.order_id)
             except Exception as e:
                 logger.warning(f"Log user action failed: {e}")
 
