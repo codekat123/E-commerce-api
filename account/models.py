@@ -41,6 +41,7 @@ class User(AbstractUser):
      last_name = None
      roles = models.CharField(max_length=20,choices=Roles.choices,default=Roles.CUSTOMER)
      email = models.EmailField(max_length=100,unique=True)
+     terms_accepted = models.BooleanField(default=False)
 
      USERNAME_FIELD = 'email'
      REQUIRED_FIELDS = []

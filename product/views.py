@@ -143,3 +143,19 @@ class ProductRatingListCreateAPIView(ListCreateAPIView):
         
 
 
+class ProductRatingsRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
+    serializer_class = ProductRatingSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+
+        profile = getattr(self.request.user, 'profile', None)
+        if profile is None:
+            raise ValidationError({"detail": "User profile not found."})
+
+
+        product_slug = self.kwargs.get('slug')
+        product = get_object_or_404(Product, slug=product_slug)
+
+
+        return get_object_or_404(ProductRating, user=profile, product=product)

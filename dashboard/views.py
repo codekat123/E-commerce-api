@@ -53,6 +53,9 @@ class MerchantCreateProductsView(CreateAPIView):
     permission_classes = [IsAuthenticated, IsMerchant]
     throttle_classes = [UserRateThrottle]
 
+    def perform_create(self,serializer):
+        serializer.save(merchant=self.request.user.merchant_profile)
+
 
 class MerchantUpdateProductsView(UpdateAPIView):
     serializer_class = ProductSerializer
