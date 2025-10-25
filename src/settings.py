@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'drf_spectacular_sidecar',
     'recommendations',
     'ai',
+    'coupon',
 ]
 
 SITE_ID = 1

@@ -49,7 +49,7 @@ def compute_item_similarity(model_version="v1"):
 
     print("[Task] Building item similarity matrix...")
 
-    # 1️⃣ Fetch only meaningful actions
+
     actions = (
         UserAction.objects
         .filter(action__in=["view", "purchase","add_to_cart"])
@@ -57,13 +57,13 @@ def compute_item_similarity(model_version="v1"):
         .distinct()
     )
 
-    # 2️⃣ Group products by user
+
     user_products = defaultdict(set)
     for row in actions:
         if row["user_id"] and row["product_id"]:
             user_products[row["user_id"]].add(row["product_id"])
 
-    # 3️⃣ Count co-occurrences between products
+
     co_counts = defaultdict(lambda: defaultdict(int))
     product_counts = defaultdict(int)
 
@@ -74,14 +74,13 @@ def compute_item_similarity(model_version="v1"):
                 if p != q:
                     co_counts[p][q] += 1
 
-    # 4️⃣ Normalize using cosine similarity
     similarities = []
     for p, related in co_counts.items():
         for q, count in related.items():
             score = count / sqrt(product_counts[p] * product_counts[q])
             similarities.append((p, q, round(score, 4)))
 
-    # 5️⃣ Store results
+
     with transaction.atomic():
         ItemSimilarity.objects.filter(model_version=model_version).delete()
         bulk = [

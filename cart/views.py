@@ -9,6 +9,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import UserRateThrottle
 from .serializers import CartItemSerializer ,PaidOrderSerializer
 from recommendations.task import log_user_action
+from coupon.models import Coupon
+from django.utils import timezone
+from rest_framework.exceptions import ValidationError
+
 
 CACHE_TIMEOUT = 60 * 60 * 24 * 2  # 2 days
 
@@ -157,3 +161,66 @@ class CartViewSet(viewsets.ViewSet):
         cache.delete(key)
         return Response({'message': 'Cart cleared successfully.'})
 
+    @action(detail=False, methods=['post'])
+    def apply_coupon(self, request):
+        """Apply a coupon to the user's cart."""
+        code = request.data.get('coupon_code')
+        if not code:
+            return Response({'error': 'Coupon code is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            coupon = Coupon.objects.get(code=code, active=True)
+        except Coupon.DoesNotExist:
+            return Response({'error': 'Invalid coupon code.'}, status=status.HTTP_404_NOT_FOUND)
+
+        now = timezone.now()
+        if not (coupon.valid_from <= now <= coupon.valid_to):
+            raise ValidationError("This coupon is expired or not yet valid.")
+
+        cart = CartService.get_cart(request.user)
+        if not cart:
+            return Response({'error': 'Your cart is empty.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        product_id = coupon.product.id
+        if product_id not in cart:
+            raise ValidationError("This coupon does not apply to any product in your cart.")
+
+        original_price = cart[product_id]['total_price']
+        discount = coupon.discount
+        discounted_price = original_price - (original_price * discount / 100)
+        difference = original_price - discounted_price
+
+        cart["coupon"] = {
+            "code": coupon.code,
+            "discount": discount,
+            "product": product_id,
+            "discounted_price": round(discounted_price, 2),
+            "amount_saved": round(difference, 2)
+        }
+
+        total_price = sum(item['total_price'] for key, item in cart.items() if isinstance(key, int))
+        cart['total_cart_price'] = round(total_price - difference, 2)
+
+        CartService.save_cart(request.user, cart)
+        return Response({
+            "message": "Coupon applied successfully.",
+            "coupon": cart["coupon"],
+            "total_cart_price": cart["total_cart_price"]
+        }, status=status.HTTP_200_OK)
+
+
+    @action(detail=False, methods=['post'])
+    def remove_coupon(self, request):
+        """Remove any applied coupon from the cart."""
+        cart = CartService.get_cart(request.user)
+        if "coupon" not in cart:
+            return Response({'error': 'No coupon applied.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        del cart["coupon"]
+        total_price = sum(item['total_price'] for key, item in cart.items() if isinstance(key, int))
+        cart['total_cart_price'] = total_price
+        CartService.save_cart(request.user, cart)
+        return Response({
+            "message": "Coupon removed.",
+            "total_cart_price": total_price
+        }, status=status.HTTP_200_OK)

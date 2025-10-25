@@ -20,21 +20,25 @@ class SimilarProduct(ListAPIView):
 
     def get_queryset(self):
         slug = self.kwargs.get('slug')
-        user = self.request.user
-        
-        try:
-            product = Product.objects.get(slug=slug)
-        except Product.DoesNotExist:
-            return ItemSimilarity.objects.none()  
-        
+        key = f"similar_to_{slug}"
+        data = cache.get(key)
 
-        return ItemSimilarity.objects.filter(product_slug=product.slug)
+        if not data:
+            try:
+                product = Product.objects.get(slug=slug)
+            except Product.DoesNotExist:
+                return ItemSimilarity.objects.none()
+
+            data = list(ItemSimilarity.objects.filter(product_slug=product.slug))
+            cache.set(key, data, timeout=60 * 60 * 24 * 2)
+
+        return data
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        if not queryset.exists():
+        if not queryset:
             return Response({'message': 'No similar products found.'}, status=status.HTTP_404_NOT_FOUND)
-        
+
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -71,4 +75,26 @@ class UserRecommendationsView(ListAPIView):
         
         return Product.objects.filter(id__in=similar_ids).exclude(id__in=interacted)
 
+
+class RecentViewedProducts(ListAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        recent_viewed_products = (
+            UserAction.objects.filter(user=user, product__isnull=False)
+            .order_by('-timestamp')
+            .values_list("product_id", flat=True)
+            .distinct()
+        )
+
+
+        product_ids = list(recent_viewed_products[:20])
+
+
+        products = Product.objects.filter(id__in=product_ids)
+        products = sorted(products, key=lambda p: product_ids.index(p.id))
+
+        return products
 

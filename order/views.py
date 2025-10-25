@@ -50,7 +50,6 @@ class ConfirmOrder(CreateAPIView):
         return order
 
 
-
 class OrderUpdateAPIView(UpdateAPIView):
     queryset = OrderStatus.objects.all()
     serializer_class = OrderStatusSerializer
@@ -67,10 +66,6 @@ class OrderUpdateAPIView(UpdateAPIView):
         if not order:
             raise NotFound("No orders found for this user.")
         return order
-
-
-
-
 
 
 
