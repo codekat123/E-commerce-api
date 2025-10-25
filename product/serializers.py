@@ -11,7 +11,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.ReadOnlyField(source='category.name')
-    merchant_name = serializers.ReadOnlyField(source='merchant.user.username')
+    merchant_name = serializers.ReadOnlyField(source='merchant.user.email')
 
     class Meta:
         model = Product

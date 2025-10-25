@@ -52,7 +52,7 @@ def compute_item_similarity(model_version="v1"):
     # 1️⃣ Fetch only meaningful actions
     actions = (
         UserAction.objects
-        .filter(action__in=["view", "purchase"])
+        .filter(action__in=["view", "purchase","add_to_cart"])
         .values("user_id", "product_id")
         .distinct()
     )
