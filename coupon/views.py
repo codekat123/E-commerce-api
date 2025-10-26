@@ -136,7 +136,7 @@ def generate_referral_link(request):
     profile = getattr(user, "profile", None)
     if not profile:
         return Response(
-            {"detail": "User profile not found."},
+            {"detail": "User not found."},
             status=status.HTTP_400_BAD_REQUEST
         )
 
@@ -152,3 +152,16 @@ def generate_referral_link(request):
         {"referral_link": referral_link},
         status=status.HTTP_200_OK
     )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_referral_balance(request):
+    profile = getattr(request.user, 'profile', None)
+    if not profile:
+        return Response({'detail': 'User profile not found.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    referral = Referral.objects.filter(referrer=profile).first()
+    if not referral:
+        return Response({'balance': 0}, status=status.HTTP_200_OK)
+
+    return Response({'balance': referral.reward_given}, status=status.HTTP_200_OK)

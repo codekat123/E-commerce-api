@@ -36,11 +36,3 @@ class Coupon(models.Model):
     discount = models.PositiveIntegerField(validators=[MinValueValidator(0), MaxValueValidator(100)])
     active = models.BooleanField(default=True)
 
-
-    def is_valid(self):
-        now = timezone.now()
-        return (
-            self.active
-            and self.valid_from <= now <= self.valid_to
-            and self.times_used < self.usage_limit
-        )

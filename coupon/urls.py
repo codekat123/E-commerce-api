@@ -11,4 +11,5 @@ urlpatterns = [
      path('coupons/<str:code>/delete/', CouponDeleteAPIView.as_view(), name='coupon-delete'),
      path('apply-coupon/', ApplyCouponAPIView.as_view(), name='apply-coupon'),
      path('get-referral-link/',generate_referral_link,name='get-referral-link'),
+     path('get-referral-balance/',get_referral_balance,name='get-referral-balance'),
 ]
