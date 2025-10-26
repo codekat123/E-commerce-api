@@ -15,6 +15,7 @@ from cart.views import CartService
 from .tasks import send_order_confirmation , send_invoice_email
 from rest_framework.exceptions import NotFound,  ValidationError
 from recommendations.task import log_user_action
+from coupon.models import Referral 
 from django.db import transaction
 import logging
 
@@ -45,7 +46,6 @@ class ConfirmOrder(CreateAPIView):
             )
 
         send_order_confirmation.delay(order.order_id)
-        CartService.clear_cart(self.request.user)
 
         return order
 
@@ -77,13 +77,21 @@ class OrderPaymentView(CreateAPIView):
     def perform_create(self, serializer):
         order_id = self.kwargs.get('order_id')
         order = get_object_or_404(Order, order_id=order_id)
-
-
+        if hasattr(order.user,'profile'):
+            user = order.user.profile
+            if hasattr(user,'referrals_received'):
+                try:
+                    referral = Referral.objects.get(referred=user.referrals_received)
+                    referral.reward_given = 300
+                    referral.save()
+                except Exception:
+                    pass
         if OrderPayment.objects.filter(order=order).exists():
             raise ValidationError("Order already paid.")
 
         with transaction.atomic():
             order.paid = True
+            CartService.clear_cart(order.user)
             order.save()
             order_payment = serializer.save(order=order)
 
@@ -121,3 +129,4 @@ class OrderDetailAPIView(RetrieveAPIView):
         if not order:
             raise NotFound("No orders found for this user.")
         return order
+    

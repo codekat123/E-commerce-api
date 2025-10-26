@@ -26,11 +26,17 @@ class SignUpAPIView(CreateAPIView):
         user = serializer.save()
         user.is_active = False
         user.save()
-
-        if user.roles == "merchant":
-            user.is_active = True
-            user.save()
-            return user
+        ref_code = self.request.GET.get('ref')
+        if ref_code:
+            try:
+                referral = Referral.objects.get(referral_code=ref_code)
+                if not Referral.objects.filter(referrer=referral.referrer, referred=user.profile).exists():
+                    Referral.objects.create(
+                        referrer=referral.referrer,
+                        referred=user.profile
+                    )
+            except Referral.DoesNotExist:
+                pass
 
         protocol = "https" if self.request.is_secure() else "http"
         domain = self.request.get_host()
@@ -52,21 +58,7 @@ class SignUpAPIView(CreateAPIView):
             </body>
         </html>
         """
-
         send_email_task.delay(subject, html_content, [user.email])
-        user = serializer.save()
-        ref_code = self.request.GET.get('ref')
-        if ref_code:
-            try:
-                referral = Referral.objects.get(referral_code=ref_code)
-                if not Referral.objects.filter(referrer=referral.referrer, referred=user.profile).exists():
-                    Referral.objects.create(
-                        referrer=referral.referrer,
-                        referred=user
-                    )
-            except Referral.DoesNotExist:
-                pass
-
         return user
 
 class LogoutView(APIView):

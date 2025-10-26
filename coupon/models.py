@@ -4,12 +4,15 @@ from product.models import Product
 import secrets
 from django.core.validators import MinValueValidator , MaxValueValidator
 from django.utils import timezone
+from order.models import Order
+
+
 
 class Referral(models.Model):
     referrer = models.ForeignKey(CustomerProfile, related_name='referrals_sent', on_delete=models.CASCADE)
     referred = models.ForeignKey(CustomerProfile, related_name='referrals_received', null=True, blank=True, on_delete=models.SET_NULL)
     referral_code = models.CharField(max_length=20, unique=True)
-    reward_given = models.BooleanField(default=False)
+    reward_given = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
@@ -20,6 +23,9 @@ class Referral(models.Model):
                     self.referral_code = code
                     break
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.referrer} ==> {self.referred}"
 
 class Coupon(models.Model):
     merchant = models.ForeignKey(MerchantProfile, on_delete=models.CASCADE)

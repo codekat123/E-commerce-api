@@ -172,7 +172,8 @@ class CartViewSet(viewsets.ViewSet):
             coupon = Coupon.objects.get(code=code, active=True)
         except Coupon.DoesNotExist:
             return Response({'error': 'Invalid coupon code.'}, status=status.HTTP_404_NOT_FOUND)
-
+        
+            
         now = timezone.now()
         if not (coupon.valid_from <= now <= coupon.valid_to):
             raise ValidationError("This coupon is expired or not yet valid.")
