@@ -14,6 +14,10 @@ from .serializers import *
 from .models import User
 from .tasks import send_email_task   
 from coupon.models import Referral
+from .utils import verify_otp,generate_otp,store_otp
+
+
+
 
 class SignUpAPIView(CreateAPIView):
     queryset = User.objects.all()
@@ -37,30 +41,22 @@ class SignUpAPIView(CreateAPIView):
                     )
             except Referral.DoesNotExist:
                 pass
-
-        protocol = "https" if self.request.is_secure() else "http"
-        domain = self.request.get_host()
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-        token = default_token_generator.make_token(user)
-        activation_link = f"{protocol}://{domain}{reverse('account:verify_email', kwargs={'uidb64': uid, 'token': token})}"
-
-        subject = "Activate Your ShopAI Account"
-        html_content = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; color: #333;">
-                <h2>Welcome to <strong>ShopAI</strong> 👋</h2>
-                <p>Click the button below to verify your email and activate your account:</p>
-                <a href="{activation_link}" 
-                   style="display:inline-block; padding:10px 20px; background:#007BFF; color:white; border-radius:6px; text-decoration:none;">
-                   Activate Account
-                </a>
-                <p style="margin-top:20px;">If this wasn’t you, please ignore this email.</p>
-            </body>
-        </html>
-        """
-        send_email_task.delay(subject, html_content, [user.email])
         return user
 
+    def create(self, request, *args, **kwargs):
+        """
+        Overriding create() to customize the response message
+        after user registration and OTP sending.
+        """
+        response = super().create(request, *args, **kwargs)
+        return Response(
+            {
+                "message": "User created successfully. Please check your email for the OTP.",
+                "email": response.data.get("email"),
+            },
+            status=status.HTTP_201_CREATED,
+        )
+    
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -74,32 +70,66 @@ class LogoutView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class ActivationView(APIView):
-    def get(self, request, uidb64, token):
-        try:
-            user_id = urlsafe_base64_decode(uidb64).decode()
-            user = User.objects.get(id=user_id)
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-            user = None
 
-        if user and user.is_active:
-            return Response(
-                {"success": False, "message": "Your account is already activated."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+class VerifyOTPAPIView(APIView):
+    authentication_classes = [] 
+    def post(self, request):
+        email = request.data.get("email")
+        otp = request.data.get("otp")
 
-        if user and default_token_generator.check_token(user, token):
+        if verify_otp(email, otp):
+            user = User.objects.filter(email=email).first()
             user.is_active = True
             user.save()
-            return Response(
-                {"success": True, "message": "Your account has been activated successfully 🎉"},
-                status=status.HTTP_200_OK
-            )
+            return Response({"message": "Account verified successfully."}, status=200)
+        return Response({"message": "Invalid or expired OTP."}, status=400)
 
-        return Response(
-            {"success": False, "message": "Invalid or expired activation link."},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from .models import User
+from .utils import generate_otp, store_otp
+from .tasks import send_email_task
+
+class ResendOTPAPIView(APIView):
+    authentication_classes = []
+
+    def post(self, request):
+        email = request.data.get('email')
+        if not email:
+            return Response({"message": "Email is required"}, status=400)
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"message": "Account does not exist"}, status=400)
+
+        otp = generate_otp()
+        store_otp(email, otp)
+
+        subject = "Resend OTP - ShopAI"
+        html_content = f"""
+        <html>
+          <body style="font-family: Arial, sans-serif; background: #f9f9f9; padding: 20px;">
+            <div style="max-width: 500px; margin: auto; background: white; border-radius: 10px; padding: 20px;">
+              <h2 style="color: #007BFF;">Your new OTP 🔐</h2>
+              <p>Here’s your new One-Time Password (OTP) to verify your account:</p>
+
+              <div style="font-size: 24px; font-weight: bold; background: #f0f4ff; color: #007BFF;
+                          padding: 10px 0; text-align: center; border-radius: 6px; letter-spacing: 4px;">
+                {otp}
+              </div>
+
+              <p style="margin-top: 20px;">⚠️ This OTP will expire in <strong>5 minutes</strong>.</p>
+              <p>If you didn’t request this, please ignore this email.</p>
+            </div>
+          </body>
+        </html>
+        """
+
+        send_email_task(subject=subject, html_content=html_content, recipient_list=[email])
+
+        return Response({"message": "OTP resent successfully"}, status=200)
+
 
 
 class ResetPasswordView(APIView):

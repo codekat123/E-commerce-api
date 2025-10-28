@@ -3,9 +3,10 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
     SignUpAPIView,
     LogoutView,
-    ActivationView,
+    VerifyOTPAPIView,
     ResetPasswordView,
     ConfirmResetPassword,
+    ResendOTPAPIView,
 )
 
 app_name = 'account'
@@ -20,7 +21,8 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(), name='logout'),
 
     # Email verification
-    path('activate/<uidb64>/<token>/', ActivationView.as_view(), name='verify_email'),
+    path('activate/', VerifyOTPAPIView.as_view(), name='verify_email'),
+    path('resend-otp/', ResendOTPAPIView.as_view(), name='resend-otp'),
 
     # Password reset
     path('reset-password/', ResetPasswordView.as_view(), name='request_password_reset'),

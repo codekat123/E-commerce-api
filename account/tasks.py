@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=10)
-def send_email_task(self, subject, html_content, recipient_list):
+def send_email_task(self ,subject, html_content, recipient_list):
     """
     Sends email asynchronously via Brevo API.
     Retries up to 3 times if sending fails.
