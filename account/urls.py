@@ -4,9 +4,9 @@ from .views import (
     SignUpAPIView,
     LogoutView,
     VerifyOTPAPIView,
-    ResetPasswordView,
-    ConfirmResetPassword,
+    SendPasswordResetOTP,
     ResendOTPAPIView,
+    VerifyOTPAndReset
 )
 
 app_name = 'account'
@@ -24,8 +24,7 @@ urlpatterns = [
     path('activate/', VerifyOTPAPIView.as_view(), name='verify_email'),
     path('resend-otp/', ResendOTPAPIView.as_view(), name='resend-otp'),
 
-    # Password reset
-    path('reset-password/', ResetPasswordView.as_view(), name='request_password_reset'),
-    path('reset-password/<uidb64>/<token>/', ConfirmResetPassword.as_view(), name='resetpassword'),
+    path('password/reset/', SendPasswordResetOTP.as_view(), name='request-reset'),
+    path('password/reset/verify/', VerifyOTPAndReset.as_view(), name='verify-otp'),
 ]
 

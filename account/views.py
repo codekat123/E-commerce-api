@@ -84,11 +84,7 @@ class VerifyOTPAPIView(APIView):
             return Response({"message": "Account verified successfully."}, status=200)
         return Response({"message": "Invalid or expired OTP."}, status=400)
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from .models import User
-from .utils import generate_otp, store_otp
-from .tasks import send_email_task
+
 
 class ResendOTPAPIView(APIView):
     authentication_classes = []
@@ -132,84 +128,47 @@ class ResendOTPAPIView(APIView):
 
 
 
-class ResetPasswordView(APIView):
-    """
-    Handles password reset requests asynchronously via Celery.
-    """
+class SendPasswordResetOTP(APIView):
+    authentication_classes = [] 
     def post(self, request):
-        serializer = EmailSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        email = serializer.validated_data['email']
+        email = request.data.get("email")
+        if not email:
+            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            # Respond the same to prevent info leaks
-            return Response(
-                {"success": True, "message": "If this email is registered, a reset link was sent."},
-                status=status.HTTP_200_OK
-            )
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        protocol = "https" if request.is_secure() else "http"
-        domain = request.get_host()
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-        token = default_token_generator.make_token(user)
-        reset_link = f"{protocol}://{domain}{reverse('account:resetpassword', kwargs={'uidb64': uid, 'token': token})}"
+        otp = generate_otp()
+        store_otp(email,otp)
 
-        subject = "Reset Your Password"
-        html_content = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; color: #333;">
-                <h2>Password Reset Request 🔒</h2>
-                <p>Hi {user.first_name or 'there'},</p>
-                <p>We received a request to reset your password. Click below to continue:</p>
-                <a href="{reset_link}" 
-                   style="display:inline-block; padding:10px 20px; background:#28a745; color:white; border-radius:6px; text-decoration:none;">
-                   Reset Password
-                </a>
-                <p style="margin-top:20px;">If you didn’t request this, you can safely ignore it.</p>
-            </body>
-        </html>
-        """
+        subject = "Password Reset OTP"
+        html_content = f"<h3>Your OTP is: {otp}</h3><p>It expires in 5 minutes.</p>"
+        send_email_task(subject=subject, html_content=html_content, recipient_list=[email])
 
-        send_email_task.delay(subject, html_content, [user.email])
-
-        return Response(
-            {"success": True, "message": "Password reset link sent successfully."},
-            status=status.HTTP_200_OK
-        )
+        return Response({"message": "OTP sent successfully"}, status=status.HTTP_200_OK)
 
 
-class ConfirmResetPassword(APIView):
-    
-    def get(self, request, uidb64, token):
-        return Response({"message": "Send a POST request with the new password."})
+class VerifyOTPAndReset(APIView):
+    authentication_classes = [] 
+    def post(self, request):
+        email = request.data.get("email")
+        otp = request.data.get("otp")
+        new_password = request.data.get("new_password")
 
-    def post(self, request, uidb64, token):
+        if not all([email, otp, new_password]):
+            return Response({"error": "All fields are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not verify_otp(email, otp):
+            return Response({"error": "Invalid or expired OTP"}, status=status.HTTP_400_BAD_REQUEST)
+        
         try:
-            uid = urlsafe_base64_decode(uidb64).decode()
-            user = User.objects.get(pk=uid)
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-            return Response(
-                {"success": False, "message": "Invalid reset link."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        if not default_token_generator.check_token(user, token):
-            return Response(
-                {"success": False, "message": "Invalid or expired token."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        user.set_password(new_password)
+        user.save()
 
-        serializer = ResetPasswordSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(user=user)
-            return Response(
-                {"success": True, "message": "Password reset successfully."},
-                status=status.HTTP_200_OK
-            )
-
-        return Response(
-            {"success": False, "errors": serializer.errors},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response({"message": "Password reset successfully"}, status=status.HTTP_200_OK)
