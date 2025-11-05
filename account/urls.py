@@ -6,7 +6,8 @@ from .views import (
     VerifyOTPAPIView,
     SendPasswordResetOTP,
     ResendOTPAPIView,
-    VerifyOTPAndReset
+    VerifyOTPAndReset,
+    ResetPassword
 )
 
 app_name = 'account'
@@ -24,7 +25,8 @@ urlpatterns = [
     path('activate/', VerifyOTPAPIView.as_view(), name='verify_email'),
     path('resend-otp/', ResendOTPAPIView.as_view(), name='resend-otp'),
 
-    path('password/reset/', SendPasswordResetOTP.as_view(), name='request-reset'),
+    path('send/password/reset/', SendPasswordResetOTP.as_view(), name='request-reset'),
     path('password/reset/verify/', VerifyOTPAndReset.as_view(), name='verify-otp'),
+    path('password/reset/', ResetPassword.as_view(), name='reset-password'),
 ]
 
