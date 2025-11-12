@@ -23,7 +23,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
 BREVO_API_KEY = os.getenv('BREVO_API_KEY')
-ALLOWED_HOSTS = ['e-commerce-api-production-8abf.up.railway.app', '127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['e-commerce-production-71e7.up.railway.app', '127.0.0.1', 'localhost']
 
 
 # Application definition
